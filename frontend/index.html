@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Data Intelligence Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --positive: #22c55e;
+      --negative: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 1.25rem;
+    }
+
+    .sidebar h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: var(--accent);
+    }
+
+    .sidebar p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .company-list {
+      list-style: none;
+    }
+
+    .company-list li {
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 0.35rem;
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .company-list li:hover {
+      background: rgba(59, 130, 246, 0.12);
+    }
+
+    .company-list li.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--accent);
+    }
+
+    .company-list .symbol {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    main {
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .top-bar h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-group {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .filter-group button {
+      background: var(--panel);
+      color: var(--text);
+      border: none;
+      padding: 0.45rem 0.9rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .filter-group button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.9rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .compare-panel {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .compare-panel.visible {
+      display: flex;
+    }
+
+    select {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .chart-wrap {
+      height: 380px;
+      position: relative;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .summary-item label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .summary-item span {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .positive { color: var(--positive); }
+    .negative { color: var(--negative); }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .status.error {
+      color: var(--negative);
+    }
+
+    @media (max-width: 768px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>Jarnox Stocks</h1>
+      <p>NSE intelligence dashboard</p>
+      <ul class="company-list" id="companyList"></ul>
+    </aside>
+
+    <main>
+      <div class="top-bar">
+        <h2 id="selectedTitle">Select a company</h2>
+        <div class="controls">
+          <div class="filter-group" id="dayFilters">
+            <button type="button" data-days="30" class="active">30D</button>
+            <button type="button" data-days="90">90D</button>
+            <button type="button" data-days="365">1Y</button>
+          </div>
+          <button type="button" class="btn primary" id="compareToggle">Compare</button>
+          <div class="compare-panel" id="comparePanel">
+            <label for="compareSelect">vs</label>
+            <select id="compareSelect"></select>
+            <button type="button" class="btn" id="applyCompare">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="status" id="statusText">Loading companies…</p>
+
+      <section class="card">
+        <div class="chart-wrap">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </section>
+
+      <section class="card summary-grid" id="summaryCard">
+        <div class="summary-item">
+          <label>52W High</label>
+          <span id="high52">—</span>
+        </div>
+        <div class="summary-item">
+          <label>52W Low</label>
+          <span id="low52">—</span>
+        </div>
+        <div class="summary-item">
+          <label>Latest Close</label>
+          <span id="latestClose">—</span>
+        </div>
+        <div class="summary-item">
+          <label>Daily Return</label>
+          <span id="dailyReturn">—</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let companies = [];
+    let selectedSymbol = null;
+    let selectedDays = 30;
+    let compareMode = false;
+    let compareSymbol = null;
+    let chartInstance = null;
+
+    const companyListEl = document.getElementById("companyList");
+    const selectedTitleEl = document.getElementById("selectedTitle");
+    const statusTextEl = document.getElementById("statusText");
+    const comparePanelEl = document.getElementById("comparePanel");
+    const compareSelectEl = document.getElementById("compareSelect");
+    const dayFiltersEl = document.getElementById("dayFilters");
+
+    function setStatus(message, isError = false) {
+      statusTextEl.textContent = message;
+      statusTextEl.classList.toggle("error", isError);
+    }
+
+    function formatCurrency(value) {
+      if (value == null || Number.isNaN(value)) return "—";
+      return "₹" + Number(value).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    function formatPercent(value) {
+      if (value == null || Number.isNaN(value)) return "—";
+      const pct = (Number(value) * 100).toFixed(2);
+      return (value >= 0 ? "+" : "") + pct + "%";
+    }
+
+    async function apiFetch(path) {
+      const response = await fetch(`${API_BASE}${path}`);
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Request failed");
+      }
+      return payload;
+    }
+
+    function destroyChart() {
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+    }
+
+    function renderChart(labels, datasets) {
+      destroyChart();
+      const ctx = document.getElementById("priceChart").getContext("2d");
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: "#f8fafc" },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#94a3b8", maxTicksLimit: 8 },
+              grid: { color: "rgba(148, 163, 184, 0.15)" },
+            },
+            y: {
+              ticks: { color: "#94a3b8" },
+              grid: { color: "rgba(148, 163, 184, 0.15)" },
+            },
+          },
+        },
+      });
+    }
+
+    function shortSymbol(symbol) {
+      return symbol.replace(".NS", "");
+    }
+
+    async function loadCompanies() {
+      companies = await apiFetch("/companies");
+      companyListEl.innerHTML = "";
+      compareSelectEl.innerHTML = "";
+
+      companies.forEach((company) => {
+        const item = document.createElement("li");
+        item.dataset.symbol = company.symbol;
+        item.innerHTML = `${company.name}<div class="symbol">${company.symbol}</div>`;
+        item.addEventListener("click", () => selectCompany(company.symbol, company.name));
+        companyListEl.appendChild(item);
+
+        const option = document.createElement("option");
+        option.value = company.symbol;
+        option.textContent = `${company.name} (${shortSymbol(company.symbol)})`;
+        compareSelectEl.appendChild(option);
+      });
+
+      if (companies.length > 0) {
+        const first = companies[0];
+        await selectCompany(first.symbol, first.name);
+      }
+      setStatus("");
+    }
+
+    async function updateSummary(symbol) {
+      const summary = await apiFetch(`/summary/${encodeURIComponent(symbol)}`);
+      document.getElementById("high52").textContent = formatCurrency(summary.high_52w);
+      document.getElementById("low52").textContent = formatCurrency(summary.low_52w);
+      document.getElementById("latestClose").textContent = formatCurrency(summary.latest_close);
+
+      const returnEl = document.getElementById("dailyReturn");
+      const ret = summary.latest_daily_return;
+      returnEl.textContent = formatPercent(ret);
+      returnEl.classList.remove("positive", "negative");
+      if (ret >= 0) {
+        returnEl.classList.add("positive");
+      } else {
+        returnEl.classList.add("negative");
+      }
+    }
+
+    async function loadSingleChart(symbol) {
+      const data = await apiFetch(`/data/${encodeURIComponent(symbol)}?days=${selectedDays}`);
+      const labels = data.map((row) => row.date);
+      const closes = data.map((row) => row.close);
+      renderChart(labels, [{
+        label: shortSymbol(symbol) + " Close",
+        data: closes,
+        borderColor: "#3b82f6",
+        backgroundColor: "rgba(59, 130, 246, 0.15)",
+        fill: true,
+        tension: 0.25,
+        pointRadius: 0,
+      }]);
+    }
+
+    async function loadCompareChart(symbol1, symbol2) {
+      const s1 = shortSymbol(symbol1);
+      const s2 = shortSymbol(symbol2);
+      const payload = await apiFetch(
+        `/compare?symbol1=${encodeURIComponent(s1)}&symbol2=${encodeURIComponent(s2)}&days=${selectedDays}`
+      );
+      const labels = payload.series1.map((row) => row.date);
+      renderChart(labels, [
+        {
+          label: shortSymbol(payload.symbol1) + " Close",
+          data: payload.series1.map((row) => row.close),
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59, 130, 246, 0.1)",
+          fill: false,
+          tension: 0.25,
+          pointRadius: 0,
+        },
+        {
+          label: shortSymbol(payload.symbol2) + " Close",
+          data: payload.series2.map((row) => row.close),
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34, 197, 94, 0.1)",
+          fill: false,
+          tension: 0.25,
+          pointRadius: 0,
+        },
+      ]);
+    }
+
+    async function refreshView() {
+      if (!selectedSymbol) return;
+      setStatus("Loading chart…");
+      try {
+        if (compareMode && compareSymbol && compareSymbol !== selectedSymbol) {
+          await loadCompareChart(selectedSymbol, compareSymbol);
+        } else {
+          await loadSingleChart(selectedSymbol);
+        }
+        await updateSummary(selectedSymbol);
+        setStatus("");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function selectCompany(symbol, name) {
+      selectedSymbol = symbol;
+      selectedTitleEl.textContent = name;
+      document.querySelectorAll(".company-list li").forEach((el) => {
+        el.classList.toggle("active", el.dataset.symbol === symbol);
+      });
+      compareSelectEl.value = companies.find((c) => c.symbol !== symbol)?.symbol || symbol;
+      await refreshView();
+    }
+
+    dayFiltersEl.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-days]");
+      if (!button) return;
+      selectedDays = Number(button.dataset.days);
+      dayFiltersEl.querySelectorAll("button").forEach((btn) => {
+        btn.classList.toggle("active", btn === button);
+      });
+      refreshView();
+    });
+
+    document.getElementById("compareToggle").addEventListener("click", () => {
+      compareMode = !compareMode;
+      comparePanelEl.classList.toggle("visible", compareMode);
+      if (compareMode) {
+        compareSymbol = compareSelectEl.value;
+      }
+      refreshView();
+    });
+
+    document.getElementById("applyCompare").addEventListener("click", () => {
+      compareSymbol = compareSelectEl.value;
+      compareMode = true;
+      comparePanelEl.classList.add("visible");
+      refreshView();
+    });
+
+    loadCompanies().catch((error) => setStatus(error.message, true));
+  </script>
+</body>
+</html>
