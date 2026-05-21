@@ -11,6 +11,9 @@ A full-stack project for stock market analysis and visualization. It ingests two
 | Frontend  | HTML, CSS, Chart.js (CDN)        |
 | API docs  | Swagger UI at `/docs`            |
 
+## Deloyment 
+https://stock-dashboard-trla.onrender.com
+
 ## Setup
 
 1. **Clone or copy the project**
@@ -39,6 +42,12 @@ A full-stack project for stock market analysis and visualization. It ingests two
 
 5. **Open the dashboard**  
    Visit [http://127.0.0.1:8000](http://127.0.0.1:8000) for the UI and [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for Swagger.
+
+## Screenshots from the output
+
+<img width="1920" height="961" alt="Screenshot (76)" src="https://github.com/user-attachments/assets/1ee63de1-c0f7-42d6-9cb6-90f9c7dbc8dd" />
+
+<img width="1920" height="978" alt="Screenshot (77)" src="https://github.com/user-attachments/assets/076b310f-3794-4d7d-8e60-c955b4e37ba5" />
 
 ## API reference
 
