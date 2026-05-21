@@ -22,8 +22,8 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
 
     try:
-        ingest_if_needed(db)
-
+        # ingest_if_needed(db)
+        pass
     except Exception as error:
         logger.exception(
             "Startup ingestion failed: %s",
