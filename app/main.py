@@ -18,14 +18,21 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Create tables and ingest market data when the database is empty."""
+
     db = SessionLocal()
+
     try:
         ingest_if_needed(db)
-    except Exception:
-        logger.exception("Startup ingestion failed")
-        raise
-    finally:
+
+    except Exception as error:
+        logger.exception(
+            "Startup ingestion failed: %s",
+            error
+        )
+
+    finally: 
         db.close()
+
     yield
 
 
